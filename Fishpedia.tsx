@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { SPECIES, RARITY_NAMES, RARITY_COLORS, formatMoney } from "../game/species";
+import { SPECIES, RARITY_NAMES, RARITY_COLORS, formatMoney } from "./species";
 
 interface Props {
   discovered: number[];

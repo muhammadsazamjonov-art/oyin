@@ -1,9 +1,9 @@
-import { SaveData } from "../game/save";
+import { SaveData } from "./save";
 import {
   rodStats, rodUpgradeCost, ROD_MAX, BOATS, XP, profileLevel,
-} from "../game/progression";
-import { formatMoney } from "../game/species";
-import { sfx } from "../game/sound";
+} from "./progression";
+import { formatMoney } from "./species";
+import { sfx } from "./sound";
 
 interface Props {
   save: SaveData;
@@ -29,7 +29,7 @@ export default function Shop({ save, setSave, onClose }: Props) {
         if (coins < c) break;
         coins -= c;
         lvl++;
-        xp += XP.rodUpgrade; // har yangilash profil +0.5 lvl
+        xp += XP.rodUpgrade(lvl + 1); // har daraja profilga o'ziga xos XP beradi
         done++;
       }
       if (done > 0) sfx.upgrade();
@@ -71,7 +71,7 @@ export default function Shop({ save, setSave, onClose }: Props) {
                 <div className="text-base font-black" style={{ color: rod.color }}>
                   🎣 {rod.tierName} qarmoq — {rod.level}/{ROD_MAX} lvl
                 </div>
-                <div className="text-xs text-sky-400">Har yangilash profilga +0.5 lvl beradi</div>
+                <div className="text-xs text-sky-400">{maxed ? "Afsonaviy qarmoq — eng yuqori daraja" : `Keyingi yangilash profilga +${XP.rodUpgrade(save.rodLevel + 1).toFixed(2)} lvl qo'shadi`}</div>
               </div>
               <div className="h-2 w-full max-w-[200px] overflow-hidden rounded-full bg-sky-950">
                 <div className="h-full rounded-full transition-all" style={{ width: `${(rod.level / ROD_MAX) * 100}%`, background: rod.color }} />
