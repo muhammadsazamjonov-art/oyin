@@ -114,6 +114,7 @@ export class Engine {
     window.addEventListener("resize", this.resize);
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
+    window.addEventListener("blur", this.onBlur);
     canvas.addEventListener("pointerdown", this.onPointerDown);
     canvas.addEventListener("pointermove", this.onPointerMove);
     window.addEventListener("pointerup", this.onPointerUp);
@@ -131,6 +132,7 @@ export class Engine {
     window.removeEventListener("resize", this.resize);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
+    window.removeEventListener("blur", this.onBlur);
     this.canvas.removeEventListener("pointerdown", this.onPointerDown);
     this.canvas.removeEventListener("pointermove", this.onPointerMove);
     window.removeEventListener("pointerup", this.onPointerUp);
@@ -168,12 +170,16 @@ export class Engine {
       e.preventDefault();
     }
     if (k === "p" || k === "escape") {
-      this.opts.onPauseToggle();
+      if (!e.repeat) this.opts.onPauseToggle();
       return;
     }
     this.keys.add(k);
   };
   private onKeyUp = (e: KeyboardEvent) => this.keys.delete(e.key.toLowerCase());
+  private onBlur = () => {
+    this.keys.clear();
+    this.pointer = null;
+  };
 
   private ptFromEvent(e: PointerEvent) {
     const r = this.canvas.getBoundingClientRect();

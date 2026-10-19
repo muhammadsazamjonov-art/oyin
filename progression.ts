@@ -72,14 +72,18 @@ export const BOATS: Boat[] = [
   { idx: 5, name: "Afsonaviy kema", reqProfile: 300, cost: 1500000, incomeMult: 4.5, roundTime: 120, xpBonus: 30, hull: "#facc15", deck: "#fef9c3", desc: "+350% daromad, +60s vaqt" },
 ];
 
-// Profil darajasi — har bir harakat har xil miqdorda qo'shadi
+// Profil XP turli harakatlar bilan yig'iladi. 2-darajali qarmoqqa o'tish aynan +0.5 beradi:
+// yangi o'yinchining profil darajasi 1.0 bo'lgani uchun natija 1.5 bo'ladi.
 export const XP = {
-  rodUpgrade: 0.5, // qarmoq 2-lvl bo'lsa profil 1.5 bo'ladi
-  catch: (price: number) => 0.01 + Math.sqrt(price) * 0.006,
+  roundStart: 0.1,
+  rodUpgrade: (newLevel: number) => newLevel === 2
+    ? 0.5
+    : 0.35 + ((newLevel * 7) % 13) * 0.025,
+  catch: (price: number) => Math.min(2, 0.03 + Math.log10(1 + Math.max(0, price)) * 0.055),
+  newSpecies: (price: number) => 0.12 + Math.log10(1 + Math.max(0, price)) * 0.035,
   roundEnd: (earned: number) => Math.pow(Math.max(0, earned), 0.38) * 0.08,
-  newSpecies: 0.25,
 };
 
 export function profileLevel(xp: number): number {
-  return 1 + xp;
+  return 1 + Math.max(0, xp);
 }

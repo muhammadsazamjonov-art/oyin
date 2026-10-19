@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Engine, RoundResult } from "../game/engine";
-import { rodStats, BOATS } from "../game/progression";
+import { Engine, RoundResult } from "./engine";
+import { rodStats, BOATS } from "./progression";
 
 interface Props {
   rodLevel: number;
