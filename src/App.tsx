@@ -3,6 +3,7 @@ import GameView from "./components/GameView";
 import Shop from "./components/Shop";
 import Fishpedia from "./components/Fishpedia";
 import LeaderboardModal from "./components/LeaderboardModal";
+import ProfileModal from "./components/ProfileModal";
 import { Engine, RoundResult } from "./game/engine";
 import { loadSave, storeSave, addHighScore, SaveData } from "./game/save";
 import { rodStats, BOATS, XP, profileLevel, ROD_MAX } from "./game/progression";
@@ -10,7 +11,7 @@ import { SPECIES, formatMoney, RARITY_COLORS } from "./game/species";
 import { unlockAudio, sfx, setMuted, isMuted } from "./game/sound";
 
 type Phase = "start" | "play" | "over";
-type Overlay = "none" | "shop" | "pedia" | "leaderboard";
+type Overlay = "none" | "shop" | "pedia" | "leaderboard" | "profile";
 
 export default function App() {
   const [save, setSave] = useState<SaveData>(loadSave);
@@ -205,6 +206,11 @@ export default function App() {
           rodInfo={{ level: save.rodLevel, tierName: rod.tierName, color: rod.color, glowColor: rod.glowColor }}
           boatName={boat.name}
           onPlay={startRound}
+          onProfile={() => {
+            unlockAudio();
+            sfx.click();
+            setOverlay("profile");
+          }}
           onShop={() => {
             unlockAudio();
             sfx.click();
@@ -228,6 +234,10 @@ export default function App() {
           result={result}
           save={save}
           onRestart={startRound}
+          onProfile={() => {
+            sfx.click();
+            setOverlay("profile");
+          }}
           onShop={() => {
             sfx.click();
             setOverlay("shop");
@@ -258,6 +268,14 @@ export default function App() {
           onClose={() => setOverlay("none")}
         />
       )}
+
+      {overlay === "profile" && (
+        <ProfileModal
+          save={save}
+          setSave={setSave}
+          onClose={() => setOverlay("none")}
+        />
+      )}
     </div>
   );
 }
@@ -270,6 +288,7 @@ function StartScreen({
   rodInfo,
   boatName,
   onPlay,
+  onProfile,
   onShop,
   onPedia,
   onLeaderboard,
@@ -279,13 +298,14 @@ function StartScreen({
   rodInfo: { level: number; tierName: string; color: string; glowColor: string };
   boatName: string;
   onPlay: () => void;
+  onProfile: () => void;
   onShop: () => void;
   onPedia: () => void;
   onLeaderboard: () => void;
 }) {
   return (
     <div className="scroll-thin absolute inset-0 overflow-y-auto">
-      <div className="mx-auto flex min-h-full w-full max-w-xl flex-col items-center justify-center gap-5 px-4 py-8 text-center">
+      <div className="mx-auto flex min-h-full w-full max-w-xl flex-col items-center justify-center gap-4 px-4 py-8 text-center">
         {/* Suzuvchi bezak baliqlar */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-25">
           <span className="anim-float absolute left-[6%] top-[14%] text-5xl">🐟</span>
@@ -300,22 +320,56 @@ function StartScreen({
           <h1 className="gold-shine mt-2 text-4xl sm:text-6xl font-black tracking-tight">
             Oltin Qarmoq
           </h1>
-          <p className="mt-2 text-xs sm:text-sm font-semibold text-sky-200">
+          <p className="mt-1 text-xs sm:text-sm font-semibold text-sky-200">
             330 xil baliq • 300 lvl qarmoq • 5 ta qayiq yangilash
           </p>
+        </div>
+
+        {/* Profil nomi va O'zgartirish tugmasi */}
+        <div
+          onClick={onProfile}
+          className="relative flex w-full cursor-pointer items-center justify-between rounded-2xl border border-sky-700/60 bg-sky-950/70 px-4 py-2.5 text-xs shadow-lg transition hover:bg-sky-900/60 active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-500/20 text-sm">
+              👤
+            </div>
+            <div className="text-left">
+              <div className="font-black text-sm text-sky-100 flex items-center gap-1.5">
+                {save.playerName}
+                <span className="rounded-md bg-violet-500/25 px-1.5 py-0.2 text-[10px] font-bold text-violet-300">
+                  {plevel.toFixed(1)} lvl
+                </span>
+              </div>
+              <div className="text-[10px] text-sky-400">
+                ID: <span className="font-mono text-sky-300">{save.playerId}</span> • Serverda saqlangan ✓
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 rounded-xl bg-sky-800/80 px-3 py-1.5 text-xs font-bold text-sky-200 transition">
+            <span>✏️</span>
+            <span>Ismni o'zgartirish</span>
+          </div>
         </div>
 
         {/* Profil va Asboblar ko'rsatkichlari */}
         <div className="relative grid w-full grid-cols-2 gap-2.5 text-left text-xs sm:grid-cols-4">
           <Chip icon="🪙" label="Tangalar" value={formatMoney(save.coins)} color="text-yellow-300" />
-          <Chip icon="👤" label="Profil" value={`${plevel.toFixed(1)} lvl`} color="text-violet-300" />
-          <Chip
-            icon="🎣"
-            label={rodInfo.tierName}
-            value={`${rodInfo.level}/${ROD_MAX} lvl`}
-            color="text-emerald-300"
-          />
-          <Chip icon="⛵" label="Qayiq" value={boatName} color="text-sky-300" />
+          <div onClick={onProfile} className="cursor-pointer transition hover:opacity-90">
+            <Chip icon="👤" label="Profil" value={`${plevel.toFixed(1)} lvl`} color="text-violet-300" />
+          </div>
+          <div onClick={onShop} className="cursor-pointer transition hover:opacity-90">
+            <Chip
+              icon="🎣"
+              label={rodInfo.tierName}
+              value={`${rodInfo.level}/${ROD_MAX} lvl`}
+              color="text-emerald-300"
+            />
+          </div>
+          <div onClick={onShop} className="cursor-pointer transition hover:opacity-90">
+            <Chip icon="⛵" label="Qayiq" value={boatName} color="text-sky-300" />
+          </div>
         </div>
 
         {/* Asosiy harakat tugmalari */}
@@ -327,7 +381,7 @@ function StartScreen({
             🎮 O'YINNI BOSHLASH
           </button>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
               onClick={onShop}
               className="rounded-2xl border border-sky-700/60 bg-sky-900/60 py-3 text-xs sm:text-sm font-black text-sky-100 transition hover:bg-sky-800 active:scale-95 shadow-md"
@@ -345,6 +399,12 @@ function StartScreen({
               className="rounded-2xl border border-sky-700/60 bg-sky-900/60 py-3 text-xs sm:text-sm font-black text-yellow-300 transition hover:bg-sky-800 active:scale-95 shadow-md"
             >
               🏆 Reyting
+            </button>
+            <button
+              onClick={onProfile}
+              className="rounded-2xl border border-sky-700/60 bg-sky-900/60 py-3 text-xs sm:text-sm font-black text-violet-300 transition hover:bg-sky-800 active:scale-95 shadow-md"
+            >
+              👤 Profil
             </button>
           </div>
         </div>
@@ -397,6 +457,7 @@ function GameOverScreen({
   result,
   save,
   onRestart,
+  onProfile,
   onShop,
   onLeaderboard,
   onMenu,
@@ -404,6 +465,7 @@ function GameOverScreen({
   result: RoundResult;
   save: SaveData;
   onRestart: () => void;
+  onProfile: () => void;
   onShop: () => void;
   onLeaderboard: () => void;
   onMenu: () => void;
@@ -472,7 +534,7 @@ function GameOverScreen({
             🔄 YANA O'YNASH <span className="text-xs opacity-75">(Enter)</span>
           </button>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
               onClick={onShop}
               className="rounded-2xl border border-yellow-500/40 bg-yellow-500/20 py-3 text-xs sm:text-sm font-black text-yellow-300 transition hover:bg-yellow-500/30 active:scale-95"
@@ -484,6 +546,12 @@ function GameOverScreen({
               className="rounded-2xl border border-sky-700/60 bg-sky-900/60 py-3 text-xs sm:text-sm font-black text-sky-100 transition hover:bg-sky-800 active:scale-95"
             >
               🏆 Reyting
+            </button>
+            <button
+              onClick={onProfile}
+              className="rounded-2xl border border-sky-700/60 bg-sky-900/60 py-3 text-xs sm:text-sm font-black text-violet-300 transition hover:bg-sky-800 active:scale-95"
+            >
+              👤 Profil
             </button>
             <button
               onClick={onMenu}

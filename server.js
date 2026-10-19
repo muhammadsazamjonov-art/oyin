@@ -11,12 +11,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 
-// In-memory leaderboard & stats with file persistence backup
+// In-memory leaderboard, stats and profiles with file persistence backup
 const DATA_DIR = path.join(__dirname, ".data");
 const LEADERBOARD_FILE = path.join(DATA_DIR, "leaderboard.json");
 const STATS_FILE = path.join(DATA_DIR, "stats.json");
+const PROFILES_FILE = path.join(DATA_DIR, "profiles.json");
 
 if (!fs.existsSync(DATA_DIR)) {
   try {
@@ -26,7 +27,7 @@ if (!fs.existsSync(DATA_DIR)) {
   }
 }
 
-// Default initial high scores (Uzbek themed)
+// Default initial high scores
 let leaderboard = [
   { id: "1", name: "Dengiz Bo'risi", score: 854000, bestFish: "Afsonaviy akula", rodLevel: 285, boat: "Afsonaviy kema", date: "Bugun" },
   { id: "2", name: "Amudaryo Ustasi", score: 492000, bestFish: "Qirol laqqa", rodLevel: 210, boat: "Oq yaxta", date: "Kecha" },
@@ -41,23 +42,31 @@ let globalStats = {
   activeAnglers: 34,
 };
 
-// Try loading persisted data
+let profiles = {}; // key: playerId or name
+
+// Load persisted data
 try {
   if (fs.existsSync(LEADERBOARD_FILE)) {
-    const raw = fs.readFileSync(LEADERBOARD_FILE, "utf-8");
-    leaderboard = JSON.parse(raw);
+    leaderboard = JSON.parse(fs.readFileSync(LEADERBOARD_FILE, "utf-8"));
   }
 } catch (e) {
-  console.warn("Error reading leaderboard file:", e);
+  console.warn("Error reading leaderboard:", e);
 }
 
 try {
   if (fs.existsSync(STATS_FILE)) {
-    const raw = fs.readFileSync(STATS_FILE, "utf-8");
-    globalStats = { ...globalStats, ...JSON.parse(raw) };
+    globalStats = { ...globalStats, ...JSON.parse(fs.readFileSync(STATS_FILE, "utf-8")) };
   }
 } catch (e) {
-  console.warn("Error reading stats file:", e);
+  console.warn("Error reading stats:", e);
+}
+
+try {
+  if (fs.existsSync(PROFILES_FILE)) {
+    profiles = JSON.parse(fs.readFileSync(PROFILES_FILE, "utf-8"));
+  }
+} catch (e) {
+  console.warn("Error reading profiles:", e);
 }
 
 function persistData() {
@@ -65,6 +74,7 @@ function persistData() {
     if (fs.existsSync(DATA_DIR)) {
       fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(leaderboard, null, 2));
       fs.writeFileSync(STATS_FILE, JSON.stringify(globalStats, null, 2));
+      fs.writeFileSync(PROFILES_FILE, JSON.stringify(profiles, null, 2));
     }
   } catch (e) {
     // ignore
@@ -76,7 +86,7 @@ app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
     game: "Oltin Qarmoq",
-    version: "1.0.0",
+    version: "1.1.0",
     speciesCount: 330,
     maxRodLevel: 300,
     boats: [
@@ -92,8 +102,58 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// Profile Cloud Save
+app.post("/api/profile/save", (req, res) => {
+  const data = req.body;
+  if (!data || (!data.playerId && !data.playerName)) {
+    return res.status(400).json({ success: false, error: "Profil ma'lumotlari to'liq emas" });
+  }
+
+  const pid = (data.playerId || ("B-" + Math.random().toString(36).substring(2, 8).toUpperCase())).trim();
+  const cleanName = (typeof data.playerName === "string" && data.playerName.trim())
+    ? data.playerName.trim().slice(0, 24)
+    : "Mohir Baliqchi";
+
+  const profileRecord = {
+    playerId: pid,
+    playerName: cleanName,
+    coins: Number(data.coins) || 0,
+    rodLevel: Math.min(300, Math.max(1, Number(data.rodLevel) || 1)),
+    boatIdx: Math.min(5, Math.max(0, Number(data.boatIdx) || 0)),
+    profileXP: Number(data.profileXP) || 0,
+    totalCaught: Number(data.totalCaught) || 0,
+    totalEarned: Number(data.totalEarned) || 0,
+    discovered: Array.isArray(data.discovered) ? data.discovered : [],
+    highScores: Array.isArray(data.highScores) ? data.highScores : [],
+    soundMuted: Boolean(data.soundMuted),
+    updatedAt: Date.now()
+  };
+
+  profiles[pid] = profileRecord;
+  profiles[cleanName.toLowerCase()] = profileRecord;
+
+  persistData();
+  res.json({ success: true, profile: profileRecord });
+});
+
+// Profile Cloud Load
+app.get("/api/profile/load/:idOrName", (req, res) => {
+  const query = (req.params.idOrName || "").trim();
+  if (!query) {
+    return res.status(400).json({ success: false, error: "ID yoki Ism ko'rsatilmadi" });
+  }
+
+  const found = profiles[query] || profiles[query.toLowerCase()];
+  if (found) {
+    res.json({ success: true, profile: found });
+  } else {
+    res.status(404).json({ success: false, error: "Profil topilmadi" });
+  }
+});
+
+// Leaderboard
 app.get("/api/leaderboard", (req, res) => {
-  const sorted = [...leaderboard].sort((a, b) => b.score - a.score).slice(0, 20);
+  const sorted = [...leaderboard].sort((a, b) => b.score - a.score).slice(0, 25);
   res.json({
     success: true,
     leaderboard: sorted,
@@ -130,7 +190,7 @@ app.post("/api/leaderboard", (req, res) => {
     success: true,
     rank,
     entry: newEntry,
-    leaderboard: leaderboard.slice(0, 20)
+    leaderboard: leaderboard.slice(0, 25)
   });
 });
 
