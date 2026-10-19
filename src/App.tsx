@@ -120,6 +120,13 @@ export default function App() {
   useEffect(() => {
     if (phase === "play") return;
     const h = (e: KeyboardEvent) => {
+      // Input yoki matn yozilayotganda o'yinni boshlamaslik
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA"
+      ) {
+        return;
+      }
       if ((e.key === "Enter" || e.key === " ") && overlay === "none") {
         e.preventDefault();
         startRound();
@@ -226,6 +233,7 @@ export default function App() {
             sfx.click();
             setOverlay("leaderboard");
           }}
+          onUpdateName={updatePlayerName}
         />
       )}
 
@@ -292,6 +300,7 @@ function StartScreen({
   onShop,
   onPedia,
   onLeaderboard,
+  onUpdateName,
 }: {
   save: SaveData;
   plevel: number;
@@ -302,7 +311,22 @@ function StartScreen({
   onShop: () => void;
   onPedia: () => void;
   onLeaderboard: () => void;
+  onUpdateName: (name: string) => void;
 }) {
+  const [localName, setLocalName] = useState(save.playerName);
+  const [savedBadge, setSavedBadge] = useState(false);
+
+  const handleSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = localName.trim().slice(0, 24);
+    if (clean) {
+      onUpdateName(clean);
+      sfx.upgrade();
+      setSavedBadge(true);
+      setTimeout(() => setSavedBadge(false), 2500);
+    }
+  };
+
   return (
     <div className="scroll-thin absolute inset-0 overflow-y-auto">
       <div className="mx-auto flex min-h-full w-full max-w-xl flex-col items-center justify-center gap-4 px-4 py-8 text-center">
@@ -325,33 +349,56 @@ function StartScreen({
           </p>
         </div>
 
-        {/* Profil nomi va O'zgartirish tugmasi */}
-        <div
-          onClick={onProfile}
-          className="relative flex w-full cursor-pointer items-center justify-between rounded-2xl border border-sky-700/60 bg-sky-950/70 px-4 py-2.5 text-xs shadow-lg transition hover:bg-sky-900/60 active:scale-[0.99]"
+        {/* Ism kiritish va o'zgartirish bloki (Bosh sahifada darhol ko'rinadi) */}
+        <form
+          onSubmit={handleSave}
+          className="relative w-full rounded-2xl border-2 border-emerald-500/80 bg-sky-950/85 p-3.5 shadow-2xl backdrop-blur transition-all"
         >
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-500/20 text-sm">
-              👤
+          <div className="mb-2 flex items-center justify-between text-xs font-black">
+            <div className="flex items-center gap-1.5 text-emerald-400">
+              <span className="text-base">👤</span>
+              <span className="tracking-wide uppercase">O'yindagi Ismingiz:</span>
             </div>
-            <div className="text-left">
-              <div className="font-black text-sm text-sky-100 flex items-center gap-1.5">
-                {save.playerName}
-                <span className="rounded-md bg-violet-500/25 px-1.5 py-0.2 text-[10px] font-bold text-violet-300">
-                  {plevel.toFixed(1)} lvl
-                </span>
-              </div>
-              <div className="text-[10px] text-sky-400">
-                ID: <span className="font-mono text-sky-300">{save.playerId}</span> • Serverda saqlangan ✓
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={onProfile}
+              className="text-[11px] text-sky-400 hover:text-sky-200 underline font-bold"
+            >
+              ID: <span className="font-mono text-sky-300">{save.playerId}</span> • Profil tafsilotlari ⚙️
+            </button>
           </div>
 
-          <div className="flex items-center gap-1.5 rounded-xl bg-sky-800/80 px-3 py-1.5 text-xs font-bold text-sky-200 transition">
-            <span>✏️</span>
-            <span>Ismni o'zgartirish</span>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={localName}
+              onChange={(e) => {
+                setLocalName(e.target.value);
+                onUpdateName(e.target.value);
+              }}
+              onBlur={() => handleSave()}
+              placeholder="Ismingizni kiriting..."
+              maxLength={24}
+              className="flex-1 rounded-xl border border-sky-600/80 bg-sky-900/80 px-3.5 py-2.5 text-sm sm:text-base font-black text-yellow-300 placeholder:text-sky-500 focus:border-yellow-400 focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2.5 text-xs sm:text-sm font-black text-emerald-950 shadow-md transition hover:brightness-110 active:scale-95"
+            >
+              {savedBadge ? "✓ Saqlandi!" : "💾 Saqlash"}
+            </button>
           </div>
-        </div>
+
+          <div className="mt-2 flex items-center justify-between text-[11px] text-sky-400">
+            <span>
+              Daraja: <strong className="text-violet-300 font-black">{plevel.toFixed(1)} lvl</strong>
+            </span>
+            <span className="text-emerald-400 font-bold flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
+              Serverda saqlanadi (o'chib ketmaydi)
+            </span>
+          </div>
+        </form>
 
         {/* Profil va Asboblar ko'rsatkichlari */}
         <div className="relative grid w-full grid-cols-2 gap-2.5 text-left text-xs sm:grid-cols-4">
@@ -404,7 +451,7 @@ function StartScreen({
               onClick={onProfile}
               className="rounded-2xl border border-sky-700/60 bg-sky-900/60 py-3 text-xs sm:text-sm font-black text-violet-300 transition hover:bg-sky-800 active:scale-95 shadow-md"
             >
-              👤 Profil
+              👤 Profil & Tiklash
             </button>
           </div>
         </div>
